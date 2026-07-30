@@ -1,0 +1,570 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>סיכום פרויקט ניטור מטיילים — התקדמות עד כה</title>
+<style>
+  @page { size: A4; margin: 18mm 16mm; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Segoe UI", Arial, "Noto Sans Hebrew", sans-serif;
+    direction: rtl;
+    color: #1a1a1a;
+    line-height: 1.6;
+    font-size: 12.5px;
+  }
+  h1 {
+    font-size: 22px;
+    border-bottom: 3px solid #2c5f6f;
+    padding-bottom: 8px;
+    margin-bottom: 4px;
+  }
+  .subtitle {
+    color: #555;
+    font-size: 12px;
+    margin-bottom: 22px;
+  }
+  h2 {
+    font-size: 16px;
+    color: #2c5f6f;
+    border-right: 5px solid #2c5f6f;
+    padding-right: 10px;
+    margin-top: 26px;
+    margin-bottom: 10px;
+    page-break-after: avoid;
+  }
+  h3 {
+    font-size: 13.5px;
+    color: #1a1a1a;
+    margin-top: 16px;
+    margin-bottom: 6px;
+    page-break-after: avoid;
+  }
+  p { margin: 6px 0; }
+  ul, ol { margin: 6px 0; padding-right: 22px; }
+  li { margin: 3px 0; }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 10px 0 16px 0;
+    font-size: 11.5px;
+  }
+  th, td {
+    border: 1px solid #ccc;
+    padding: 6px 8px;
+    text-align: right;
+  }
+  th {
+    background: #eef4f5;
+    color: #2c5f6f;
+  }
+  tr:nth-child(even) td { background: #fafafa; }
+  .stage-box {
+    background: #f7f9fa;
+    border: 1px solid #dbe4e6;
+    border-radius: 6px;
+    padding: 14px 16px;
+    margin: 10px 0 18px 0;
+    page-break-inside: avoid;
+  }
+  .callout {
+    background: #fff6e5;
+    border-right: 4px solid #d99a1b;
+    padding: 10px 14px;
+    margin: 10px 0;
+    border-radius: 4px;
+  }
+  .bug-box {
+    background: #fdecec;
+    border-right: 4px solid #c0392b;
+    padding: 10px 14px;
+    margin: 10px 0;
+    border-radius: 4px;
+  }
+  .fix-box {
+    background: #eafaf1;
+    border-right: 4px solid #219653;
+    padding: 10px 14px;
+    margin: 10px 0;
+    border-radius: 4px;
+  }
+  code {
+    background: #f0f0f0;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-family: Consolas, monospace;
+    direction: ltr;
+    display: inline-block;
+    font-size: 11px;
+  }
+  .kpi-row {
+    display: flex;
+    gap: 10px;
+    margin: 10px 0 18px 0;
+  }
+  .kpi {
+    flex: 1;
+    background: #2c5f6f;
+    color: white;
+    border-radius: 6px;
+    padding: 10px 12px;
+    text-align: center;
+  }
+  .kpi .num { font-size: 19px; font-weight: bold; display: block; }
+  .kpi .lbl { font-size: 10.5px; opacity: 0.9; }
+  .footer-note {
+    margin-top: 30px;
+    padding-top: 10px;
+    border-top: 1px solid #ccc;
+    font-size: 10.5px;
+    color: #777;
+  }
+  .status-done { color: #219653; font-weight: bold; }
+  .status-pending { color: #999; font-weight: bold; }
+  .figure {
+    margin: 14px 0;
+    text-align: center;
+    page-break-inside: avoid;
+  }
+  .figure img {
+    max-width: 100%;
+    border: 1px solid #e1e0d9;
+    border-radius: 4px;
+  }
+  .figure .caption {
+    font-size: 10.5px;
+    color: #777;
+    margin-top: 4px;
+  }
+  .sample-table-wrap {
+    direction: ltr;
+    margin: 8px 0 14px 0;
+  }
+  table.sample {
+    direction: ltr;
+    font-family: Consolas, monospace;
+    font-size: 8.3px;
+    width: 100%;
+    table-layout: fixed;
+  }
+  table.sample th, table.sample td {
+    text-align: left;
+    white-space: normal;
+    overflow-wrap: break-word;
+    padding: 3px 5px;
+  }
+  .sample-label {
+    font-size: 10.5px;
+    color: #777;
+    margin: 4px 0 2px 0;
+  }
+</style>
+</head>
+<body>
+
+<h1>סיכום פרויקט: ניטור מטיילים מבוסס חיישני BLE</h1>
+<div class="subtitle">דוח התקדמות — 29 ביולי 2026 &nbsp;|&nbsp; שלבים א׳–ג׳ מתוך ד׳ הושלמו (עודכן לאחר קבלת נתוני חיישן A המלאים)</div>
+
+<p>
+מטרת הפרויקט היא לבנות מערכת מבוססת חיישני Bluetooth (BLE) לספירת מטיילים בשטח,
+תוך פתרון שתי בעיות מרכזיות: מטייל אחד עשוי לשאת מספר מכשירים (טלפון, שעון, אוזניות),
+ומכשירים משנים את כתובת ה-MAC שלהם מטעמי פרטיות. שני האתגרים גורמים לספירת יתר.
+הפתרון נבנה כצינור עיבוד (pipeline) בן ארבעה שלבים, המתועד בקובץ
+<code>hiker_monitoring_project_summary.md</code>. דוח זה מסכם את שלושת השלבים
+שבוצעו עד כה, כולל תוצאות מספריות ושני ממצאים מהותיים שהתגלתו ותוקנו תוך כדי
+עבודה — האחד באלגוריתם האיחוד (שלב ג׳), והשני בנתוני הקלט עצמם (שלב א׳).
+</p>
+
+<div class="callout">
+<b>עדכון מרכזי:</b> לאחר כתיבת הדוח המקורי התקבל קובץ הנתונים המלא של חיישן A
+(<code>Sensor_A_combined_file.xlsx</code>), הכולל חותמות זמן אמיתיות ברזולוציית
+שניות לכל שורה — במקום החילוץ החלקי שהיה זמין קודם ברזולוציית דקה בלבד. בבדיקה
+התברר ששלב הניקוי המקורי (המבוסס על התאמת דקה) ביצע ספירת חסר: קריאות שונות
+שנפלו באותה דקה נחשבו בטעות לכפילות וכוסו זו את זו. שלבים א׳–ג׳ שוחזרו במלואם
+מול הנתונים המתוקנים; המספרים בדוח זה הם התוצאות הסופיות.
+</div>
+
+<div class="kpi-row">
+  <div class="kpi"><span class="num">638,254</span><span class="lbl">רשומות חיישן A לאחר ניקוי (עודכן)</span></div>
+  <div class="kpi"><span class="num">815,093</span><span class="lbl">רשומות חיישן B לאחר ניקוי</span></div>
+  <div class="kpi"><span class="num">7,838 / 10,516</span><span class="lbl">מטיילים (A / B) לאחר איחוד זהויות</span></div>
+</div>
+
+<h2>שלב א׳: הכנת נתוני חיישן A</h2>
+<div class="stage-box">
+<p><b>הרקע (המצב המקורי):</b> חיישן A היה זמין תחילה רק בקובץ שמר חותמות זמן
+ברזולוציה של דקה בלבד (ללא שניות), בעוד שחיישן B שמר ברזולוציית שניות. השלב
+המקורי שיחזר שניות משוערות באמצעות פיזור ליניארי של הקריאות בתוך כל דקה.</p>
+
+<div class="bug-box">
+<b>הבעיה שהתגלתה:</b> לאחר שהתקבל הקובץ המלא של חיישן A
+(<code>Sensor_A_combined_file.xlsx</code>, 945,642 שורות) — הכולל חותמות זמן
+אמיתיות ברזולוציית שניות לכל שורה, ולא רק לחלק מהן — התברר ששלב הניקוי
+המקורי לא היה רק "משוער" אלא <b>שגוי בפועל</b>: מכיוון שהניקוי הישן זיהה
+כפילויות לפי (MAC, RSSI, timestamp) ברמת <u>דקה</u>, שתי קריאות שונות לחלוטין
+של אותו MAC עם אותו RSSI שנפלו באותה דקה נחשבו בטעות לאותה קריאה ומוזגו יחד.
+הרצת אותו ניקוי בדיוק על הנתונים החדשים (עם שניות אמיתיות) נותנת <b>638,254</b>
+שורות במקום 347,148 הישנות — פער של כמעט פי שניים, שנבע כולו מהתנגשויות שווא
+ברמת הדקה, לא מכפילויות אמיתיות.
+</div>
+
+<h3>מה בדיוק השתנה בקובץ החדש</h3>
+<p>
+מתוך שבעת קבצי המקור, שישה זהים לחלוטין בכמות השורות לגרסה הקודמת. הקובץ
+היחיד שהשתנה מהותית הוא <code>dataA_110426_1_good.csv</code>: בגרסה הישנה
+הכיל רק 3,837 שורות (חלון של 75 דקות ב-11.04.2026), ואילו בגרסה החדשה הוא
+מכיל 34,125 שורות הפרושות על פני <b>46 ימים, מ־26.02.2026 עד 11.04.2026</b>.
+כלומר, התקבלו בפועל שישה שבועות נוספים של נתוני חיישן A שלא היו ידועים כלל
+קודם — תקופה שקודמת אף לתחילת נתוני חיישן B (9.04.2026), כך שלקטע הזה אין
+כלל נתוני חיישן B מקבילים.
+</p>
+
+<h3>ממצא נוסף שנשמר: כפילות ייצוא מצטבר בין קבצים</h3>
+<div class="callout">
+כפי שנמצא כבר בגרסה הקודמת, חלק מקבצי המקור הם ייצוא מצטבר (cumulative) של
+אותו יומן מכשיר — קובץ מאוחר יותר מכיל בתוכו את כל הנתונים של קובץ מוקדם
+יותר, ועוד. לדוגמה: <code>data230526a.csv</code> הוא תת-קבוצה כמעט מלאה של
+<code>data_A_260526.csv</code>. בעיה זו עדיין קיימת בקובץ החדש ומטופלת באותה
+שיטה.
+</div>
+
+<h3>הפתרון המעודכן</h3>
+<ol>
+  <li>טעינת <code>Sensor_A_combined_file.xlsx</code> — כל השורות כבר כוללות
+    חותמת זמן ברזולוציית שניות, כך ש<b>שלב שחזור השניות אינו נדרש עוד</b>.</li>
+  <li>ניקוי כפילויות גלובלי לפי השילוש <code>(MAC, RSSI, timestamp)</code>
+    ברמת השנייה המדויקת, על פני כל הקבצים יחד — הפחית את הנתונים מ־945,642
+    ל־638,254 שורות (הוסרו 307,388 כפילויות אמיתיות).</li>
+  <li>בדיקות תקינות: מונוטוניות חותמות הזמן לכל קובץ מקור, ודיווח כפילויות
+    שהוסרו לכל קובץ בנפרד.</li>
+</ol>
+
+<h3>המחשה: כמה שורות נגרעו בניקוי, לכל קובץ מקור</h3>
+<div class="figure">
+<img src="figures/stage_a_dedup.png" alt="Stage A dedup chart">
+<div class="caption">עמודה אפורה = לפני ניקוי, עמודה כחולה = אחרי ניקוי. שני הקבצים הגדולים
+(data_A_260526, data230526a) מאבדים הכי הרבה שורות — עקבי עם ממצא הכפילות המצטברת.</div>
+</div>
+
+<h3>איך הנתונים נראים אחרי השלב (דוגמת שורות)</h3>
+<div class="sample-label"><code>DATA/sensor_A_deduped.parquet</code> — 638,254 שורות:</div>
+<div class="sample-table-wrap">
+<table class="sample">
+<tr><th>MAC</th><th>RSSI</th><th>timestamp</th><th>source_file</th></tr>
+<tr><td>71:11:b2:fd:ef:d5</td><td>-97</td><td>2026-02-26 11:51:41</td><td>dataA_110426_1_good.csv</td></tr>
+<tr><td>0e:42:cc:bc:72:de</td><td>-96</td><td>2026-02-26 11:58:12</td><td>dataA_110426_1_good.csv</td></tr>
+<tr><td>0e:42:cc:bc:72:de</td><td>-96</td><td>2026-02-26 11:58:13</td><td>dataA_110426_1_good.csv</td></tr>
+<tr><td>3d:92:a3:a8:4c:d1</td><td>-95</td><td>2026-02-26 11:58:13</td><td>dataA_110426_1_good.csv</td></tr>
+<tr><td>3d:92:a3:a8:4c:d1</td><td>-97</td><td>2026-02-26 11:58:13</td><td>dataA_110426_1_good.csv</td></tr>
+</table>
+</div>
+
+<h3>תוצרים</h3>
+<table>
+<tr><th>קובץ</th><th>תיאור</th></tr>
+<tr><td><code>DATA/sensor_A_deduped.csv / .parquet</code></td><td>נתוני חיישן A לאחר ניקוי (ללא צורך בשחזור שניות)</td></tr>
+<tr><td><code>notebooks/01_stage_a_time_reconstruction.ipynb</code></td><td>המחברת המלאה (שם הקובץ נשמר לצורך המשכיות, אף שהשחזור עצמו כבר לא נדרש)</td></tr>
+</table>
+</div>
+
+<h2>שלב ב׳: חלוקה ל"ביקורים" והנדסת מאפיינים</h2>
+<div class="stage-box">
+<p><b>המטרה:</b> לקבץ קריאות RSSI גולמיות, עבור כל כתובת MAC ובכל חיישן בנפרד,
+ל"ביקורים" (sessions) רציפים, ולחלץ עבור כל ביקור מאפיינים שישמשו את שלבי ההמשך.
+<b>שלב זה שוחזר</b> לאחר תיקון שלב א׳, מול נתוני חיישן A המתוקנים.</p>
+
+<h3>קביעת סף הפרדה בין ביקורים</h3>
+<p>
+נבדקה מחדש התפלגות הפערים בין קריאות עוקבות של אותה כתובת MAC על הנתונים
+המתוקנים: החציון הוא שנייה אחת, ו־99.9% מהפערים קטנים או שווים ל־60 שניות —
+עקבי עם הבדיקה הקודמת (99.8%). סף ה־<b>60 שניות</b> נותר תקף.
+</p>
+
+<div class="figure">
+<img src="figures/stage_b_gap_threshold.png" alt="Gap threshold histogram">
+<div class="caption">רוב הפערים מתרכזים קרוב לאפס; קו השבר (60 שניות) נבחר כנקודת
+החיתוך הטבעית בין "עדיין באזור הקליטה" לבין "התרחק/עזב".</div>
+</div>
+
+<h3>הכנת נתוני חיישן B</h3>
+<p>
+ללא שינוי: אותה בעיית כפילות ייצוא מצטבר קיימת גם בחיישן B — 1,217,216 שורות
+גולמיות צומצמו ל־815,093 לאחר ניקוי זהה. חיישן B כבר שומר רזולוציית שניות,
+כך שלא נדרש שחזור זמנים עבורו — רק ניקוי כפילויות.
+</p>
+
+<h3>מאפיינים שחולצו לכל ביקור</h3>
+<ul>
+  <li>זמן התחלה וסיום, ומשך השהות</li>
+  <li>מספר קריאות בביקור</li>
+  <li>עוצמת קליטה ממוצעת (Mean RSSI)</li>
+  <li><b>מגמת RSSI (rssi_trend):</b> שיפוע ריבועים-פחותים (linear regression) של
+    RSSI כנגד הזמן בתוך הביקור — בביקורים עם קריאה בודדת השיפוע אינו מוגדר
+    (<code>NaN</code>), וזה נשמר במכוון ולא הושלך</li>
+</ul>
+
+<h3>תוצאות (מעודכן)</h3>
+<table>
+<tr><th>חיישן</th><th>קריאות (לאחר ניקוי)</th><th>ביקורים (sessions)</th><th>ביקורים עם קריאה בודדת</th></tr>
+<tr><td>A</td><td>638,254</td><td>15,093</td><td>643</td></tr>
+<tr><td>B</td><td>815,093</td><td>19,359</td><td>801</td></tr>
+</table>
+<p style="color:#555; font-size:11px;">
+לשם השוואה: לפני התיקון, 347,148 קריאות חיישן A הניבו 14,661 ביקורים. כלומר,
+רוב הקריאות ש"נוספו" בתיקון (כ־291K) התווספו לביקורים קיימים ולא יצרו הרבה
+ביקורים חדשים — עדות לכך שהתיקון בעיקר צפיפות מדגם ולא זיהוי ביקורים חדשים.
+</p>
+
+<div class="figure">
+<img src="figures/stage_b_session_features.png" alt="Session feature distributions">
+<div class="caption">התפלגות משך הביקור ומספר הקריאות לביקור, בשני החיישנים — צורות דומות
+מאוד בין A ל-B, עוד סימן לעקביות בין שני הצינורות הנפרדים.</div>
+</div>
+
+<h3>איך הנתונים נראים אחרי השלב (דוגמת שורות)</h3>
+<div class="sample-label"><code>DATA/sessions_sensor_A.parquet</code> — 15,093 שורות:</div>
+<div class="sample-table-wrap">
+<table class="sample">
+<tr><th>sensor</th><th>MAC</th><th>session_id</th><th>start_time</th><th>end_time</th><th>duration_s</th><th>n_readings</th><th>mean_rssi</th><th>rssi_trend</th></tr>
+<tr><td>A</td><td>00:01:a5:f1:dc:c0</td><td>1</td><td>2026-05-19 11:28:31</td><td>2026-05-19 11:28:55</td><td>24.0</td><td>14</td><td>-91.86</td><td>-0.0917</td></tr>
+<tr><td>A</td><td>00:05:12:18:96:8a</td><td>2</td><td>2026-05-23 11:57:46</td><td>2026-05-23 11:58:11</td><td>25.0</td><td>15</td><td>-97.07</td><td>0.1026</td></tr>
+<tr><td>A</td><td>00:09:b2:fb:f4:36</td><td>3</td><td>2026-05-19 14:06:37</td><td>2026-05-19 14:07:55</td><td>78.0</td><td>47</td><td>-87.98</td><td>-0.0116</td></tr>
+<tr><td>A</td><td>00:0d:40:9e:7c:59</td><td>4</td><td>2026-05-24 10:30:39</td><td>2026-05-24 10:30:53</td><td>14.0</td><td>4</td><td>-93.25</td><td>-0.5522</td></tr>
+<tr><td>A</td><td>00:0d:5f:3a:4a:fb</td><td>5</td><td>2026-02-26 13:41:28</td><td>2026-02-26 13:42:05</td><td>37.0</td><td>8</td><td>-96.13</td><td>-0.0610</td></tr>
+</table>
+</div>
+
+<h3>תוצרים</h3>
+<table>
+<tr><th>קובץ</th><th>תיאור</th></tr>
+<tr><td><code>DATA/sessions_sensor_A / B .csv / .parquet</code></td><td>טבלת ביקורים לכל חיישן, עם כל המאפיינים</td></tr>
+<tr><td><code>notebooks/02_stage_b_sessionization.ipynb</code></td><td>המחברת המלאה</td></tr>
+</table>
+</div>
+
+<h2>שלב ג׳: איחוד זהויות (Entity Resolution)</h2>
+<div class="stage-box">
+<p><b>המטרה:</b> לאחד כתובות MAC שונות ששייכות ככל הנראה לאותו מטייל פיזי (בשל
+ריבוי מכשירים או שינוי כתובת MAC באמצע ביקור) תחת מזהה מטייל יחיד (Traveler_ID).
+הפעולה מתבצעת בנפרד עבור כל חיישן. <b>שלב זה שוחזר</b> לאחר תיקון שלבים א׳-ב׳,
+כאשר האלגוריתם עצמו לא השתנה.</p>
+
+<h3>העיקרון</h3>
+<p>
+שני ביקורים מאוחדים אם הם חופפים בזמן (או שהפער ביניהם קטן מ־60 שניות) <b>וגם</b>
+מגמת ה-RSSI שלהם דומה מאוד. לא נעשה שימוש במרחק משוקלל יחיד (כפי שהיה נהוג ב־DBSCAN
+קלאסי), כדי להימנע מהצורך להמציא משקל שרירותי בין שתי יחידות מידה שונות (שניות מול
+dBm/שנייה) ללא נתוני אמת (ground truth) לכיול.
+</p>
+
+<div class="bug-box">
+<b>בעיה שהתגלתה בבדיקה הראשונה (באלגוריתם, לא בנתונים):</b> הגישה הראשונית
+(רכיבים קשירים / single-linkage) יצרה "מטייל" אחד המורכב מ־419 ביקורים שונים,
+כאשר מגמת ה-RSSI בתוכו נעה בין <code>-2.0</code> ל־<code>+6.0</code>
+dBm/שנייה — טווח בלתי סביר לחלוטין עבור אדם אחד. הסיבה: שרשור טרנזיטיבי
+(ביקור 1 דומה ל-2, 2 דומה ל-3, וכן הלאה), כך שגם אם כל זוג סמוך עומד בסף,
+הקצוות הרחוקים בשרשרת יכולים להיות שונים לגמרי.
+</div>
+
+<div class="fix-box">
+<b>התיקון:</b> מעבר לאלגוריתם <b>Complete-Linkage</b> (קיבוץ היררכי עם קריטריון
+"מרחק מקסימלי") בתוך כל בלוק זמן. בשיטה זו קבוצה מתקבלת רק אם <b>כל</b> הזוגות
+בתוכה (ולא רק זוגות סמוכים בשרשרת) עומדים בסף הדמיון — מה שמבטל את בעיית השרשור
+מבנית. לאחר התיקון (ומאז גם על הנתונים המתוקנים של שלב א׳), הקבוצה הגדולה
+ביותר נותרה בטווח סביר של 17–22 מכשירים.
+</div>
+
+<h3>המחשת האלגוריתם: מדוע שרשור נכשל ומה Complete-Linkage עושה אחרת</h3>
+<div class="figure">
+<svg viewBox="0 0 760 210" width="100%" height="210" xmlns="http://www.w3.org/2000/svg" style="font-family:'Segoe UI',Arial,sans-serif;">
+  <rect x="8" y="8" width="352" height="194" rx="10" fill="#fdecec"/>
+  <text x="184" y="34" text-anchor="middle" fill="#0b0b0b" font-size="14" font-weight="bold">Single-linkage — הגישה שנכשלה</text>
+  <rect x="30" y="80" width="308" height="58" rx="29" fill="none" stroke="#c0392b" stroke-width="2" stroke-dasharray="6,4"/>
+  <line x1="66" y1="109" x2="104" y2="109" stroke="#0b0b0b" stroke-width="1.5"/>
+  <line x1="136" y1="109" x2="174" y2="109" stroke="#0b0b0b" stroke-width="1.5"/>
+  <line x1="206" y1="109" x2="235" y2="109" stroke="#0b0b0b" stroke-width="1.5"/>
+  <line x1="255" y1="109" x2="284" y2="109" stroke="#0b0b0b" stroke-width="1.5"/>
+  <circle cx="50" cy="109" r="16" fill="#2a78d6"/>
+  <circle cx="120" cy="109" r="16" fill="#2a78d6"/>
+  <circle cx="190" cy="109" r="16" fill="#2a78d6"/>
+  <text x="242" y="114" text-anchor="middle" fill="#898781" font-size="16">...</text>
+  <circle cx="300" cy="109" r="18" fill="#2a78d6"/>
+  <text x="50" y="114" text-anchor="middle" fill="white" font-size="12">1</text>
+  <text x="120" y="114" text-anchor="middle" fill="white" font-size="12">2</text>
+  <text x="190" y="114" text-anchor="middle" fill="white" font-size="12">3</text>
+  <text x="300" y="114" text-anchor="middle" fill="white" font-size="11">419</text>
+  <text x="184" y="172" text-anchor="middle" fill="#c0392b" font-size="12.5" font-weight="bold">"מטייל" אחד? (שגוי — הקצוות שונים לגמרי)</text>
+
+  <rect x="400" y="8" width="352" height="194" rx="10" fill="#eafaf1"/>
+  <text x="576" y="34" text-anchor="middle" fill="#0b0b0b" font-size="14" font-weight="bold">Complete-linkage — הגישה הנבחרת</text>
+  <rect x="418" y="80" width="150" height="58" rx="29" fill="none" stroke="#219653" stroke-width="2" stroke-dasharray="6,4"/>
+  <rect x="608" y="80" width="120" height="58" rx="29" fill="none" stroke="#219653" stroke-width="2" stroke-dasharray="6,4"/>
+  <line x1="456" y1="109" x2="464" y2="109" stroke="#0b0b0b" stroke-width="1.5"/>
+  <line x1="496" y1="109" x2="504" y2="109" stroke="#0b0b0b" stroke-width="1.5"/>
+  <path d="M 440 100 Q 480 78 520 100" fill="none" stroke="#0b0b0b" stroke-width="1.3"/>
+  <line x1="656" y1="109" x2="664" y2="109" stroke="#0b0b0b" stroke-width="1.5"/>
+  <circle cx="440" cy="109" r="16" fill="#2a78d6"/>
+  <circle cx="480" cy="109" r="16" fill="#2a78d6"/>
+  <circle cx="520" cy="109" r="16" fill="#2a78d6"/>
+  <circle cx="640" cy="109" r="16" fill="#2a78d6"/>
+  <circle cx="680" cy="109" r="18" fill="#2a78d6"/>
+  <text x="440" y="114" text-anchor="middle" fill="white" font-size="12">1</text>
+  <text x="480" y="114" text-anchor="middle" fill="white" font-size="12">2</text>
+  <text x="520" y="114" text-anchor="middle" fill="white" font-size="12">3</text>
+  <text x="640" y="114" text-anchor="middle" fill="white" font-size="12">4</text>
+  <text x="680" y="114" text-anchor="middle" fill="white" font-size="11">419</text>
+  <text x="493" y="172" text-anchor="middle" fill="#219653" font-size="12.5" font-weight="bold">קבוצה A (דומים זה לזה, כל הזוגות)</text>
+  <text x="668" y="172" text-anchor="middle" fill="#219653" font-size="12.5" font-weight="bold">קבוצה B (ורבות נוספות)</text>
+</svg>
+<div class="caption">בגישת ה-single-linkage, מספיק ששני ביקורים סמוכים בשרשרת יהיו דומים
+כדי שיתמזגו — כך הקצוות הרחוקים (1 מול 419) מתמזגים בעקיפין אף שאינם דומים כלל.
+ב-complete-linkage, קבוצה מתקבלת רק אם <b>כל</b> הזוגות בתוכה עומדים בסף — מה
+שמבטיח שכל מי שמאוחד תחת אותו Traveler_ID באמת דומה לכולם, לא רק לשכן שלו.</div>
+</div>
+
+<h3>מגבלה ידועה שהתקבלה במודע</h3>
+<div class="callout">
+גם לאחר התיקון, הקבוצות הגדולות ביותר (עד כ־17–22 מכשירים) עשויות לייצג
+<b>קבוצת מטיילים ההולכים יחד</b> ולא בהכרח מכשירים רבים של אדם אחד — אנשים
+ההולכים יחד באותו שביל ובאותו קצב מייצרים חפיפת זמן ומגמת RSSI דומות מטבע הדברים.
+אין דרך להבחין בין שתי האפשרויות מתוך נתוני ה-BLE בלבד, וללא נתוני אמת. ההחלטה
+הייתה להשאיר את התוצאה כפי שהיא, כאשר הקבוצות הגדולות מדווחות במפורש בבדיקות
+התקינות של המחברת לצורך בקרה ידנית — ולא לנסות "לנחש" באמצעות תקרה שרירותית על
+מספר המכשירים לאדם.
+</div>
+
+<h3>תוצאות (מעודכן)</h3>
+<table>
+<tr><th>חיישן</th><th>ביקורים</th><th>מטיילים (Traveler_ID)</th><th>איחודים שבוצעו</th><th>הקבוצה הגדולה ביותר</th></tr>
+<tr><td>A</td><td>15,093</td><td>7,838</td><td>7,255</td><td>17 מכשירים</td></tr>
+<tr><td>B</td><td>19,359</td><td>10,516</td><td>8,843</td><td>22 מכשירים</td></tr>
+</table>
+
+<div class="figure">
+<img src="figures/stage_c_threshold_selection.png" alt="Threshold selection histograms">
+<div class="caption">התפלגות ההפרשים בין זוגות ביקורים מועמדים לאיחוד (בכל חיישן בנפרד).
+הסף (קו מקווקו) נבחר כאחוזון ה־10 של ההתפלגות — בחירה שמרנית שמעדיפה מיזוגים
+בטוחים על פני כמות, מכיוון שאין נתוני אמת לכיול מדויק יותר.</div>
+</div>
+
+<div class="figure">
+<img src="figures/stage_c_n_devices.png" alt="Devices per traveler distribution">
+<div class="caption">רוב המטיילים (כ־55-60%) זוהו במכשיר אחד בלבד; מיעוט משמעותי אוחד
+משני מכשירים או יותר. הזנב הארוך (עד 17-22 מכשירים) הם הקבוצות הגדולות שנדונו
+במגבלה הידועה למטה.</div>
+</div>
+
+<h3>מטיילים ליום, לכל חיישן (מעודכן — כולל טווח פברואר–מרץ החדש)</h3>
+<p>
+מספר המטיילים היחודיים (לאחר איחוד הזהויות) שזוהו בכל יום איסוף, בכל חיישן
+בנפרד. "היום" של מטייל נקבע לפי תאריך ה-<code>start_time</code> שלו — נבדק
+ואומת כי אף ביקור, בשני החיישנים, אינו חוצה חצות, כך שההקצאה חד-משמעית.
+חמישה ימים חדשים בפברואר-מרץ נוספו לחיישן A בעקבות תיקון שלב א׳.
+</p>
+
+<div class="figure">
+<img src="figures/stage_c_travelers_per_day.png" alt="Travelers per day chart">
+<div class="caption">עמודה חסרה = אין נתונים לאותו יום מאותו חיישן (ולא אפס מטיילים).
+בימים המשותפים, גובה העמודות הכחולה והכתומה קרוב מאוד זה לזה.</div>
+</div>
+
+<table>
+<tr><th>תאריך</th><th>מטיילים — חיישן A</th><th>מטיילים — חיישן B</th></tr>
+<tr><td>26.02.2026</td><td>66</td><td>—</td></tr>
+<tr><td>27.02.2026</td><td>170</td><td>—</td></tr>
+<tr><td>28.02.2026</td><td>10</td><td>—</td></tr>
+<tr><td>02.03.2026</td><td>7</td><td>—</td></tr>
+<tr><td>03.03.2026</td><td>10</td><td>—</td></tr>
+<tr><td>09.04.2026</td><td>—</td><td>97</td></tr>
+<tr><td>10.04.2026</td><td>—</td><td>219</td></tr>
+<tr><td>11.04.2026</td><td>77</td><td>160</td></tr>
+<tr><td>02.05.2026</td><td>220</td><td>114</td></tr>
+<tr><td>03.05.2026</td><td>255</td><td>261</td></tr>
+<tr><td>04.05.2026</td><td>—</td><td>16</td></tr>
+<tr><td>05.05.2026</td><td>—</td><td>221</td></tr>
+<tr><td>06.05.2026</td><td>—</td><td>778</td></tr>
+<tr><td>09.05.2026</td><td>322</td><td>326</td></tr>
+<tr><td>16.05.2026</td><td>1,410</td><td>1,412</td></tr>
+<tr><td>17.05.2026</td><td>368</td><td>387</td></tr>
+<tr><td>18.05.2026</td><td>902</td><td>901</td></tr>
+<tr><td>19.05.2026</td><td>809</td><td>834</td></tr>
+<tr><td>20.05.2026</td><td>380</td><td>533</td></tr>
+<tr><td>21.05.2026</td><td>—</td><td>499</td></tr>
+<tr><td>22.05.2026</td><td>—</td><td>18</td></tr>
+<tr><td>23.05.2026</td><td>1,167</td><td>1,095</td></tr>
+<tr><td>24.05.2026</td><td>390</td><td>404</td></tr>
+<tr><td>25.05.2026</td><td>684</td><td>—</td></tr>
+<tr><td>27.05.2026</td><td>107</td><td>128</td></tr>
+<tr><td>28.05.2026</td><td>444</td><td>484</td></tr>
+<tr><td>29.05.2026</td><td>—</td><td>454</td></tr>
+<tr><td>30.05.2026</td><td>—</td><td>1,130</td></tr>
+<tr><td>31.05.2026</td><td>40</td><td>45</td></tr>
+</table>
+<div class="callout">
+<b>פערי כיסוי בין החיישנים:</b> מתוך 29 ימי איסוף שונים (לאחר הוספת נתוני
+פברואר–מרץ לחיישן A), שישה ימים (26–28.02, 02–03.03, 25.05) קיימים בחיישן A
+בלבד, ותשעה ימים קיימים בחיישן B בלבד (09–10.04, 04–06.05, 21–22.05,
+29–30.05) — כנראה בשל הבדלים בזמינות/פעילות בפועל של כל חיישן, ולא כתוצאה
+מבאג בעיבוד. עם זאת, ב־14 הימים שבהם לשני החיישנים יש נתונים, הספירות
+היומיות עדיין קרובות מאוד זו לזו (למשל 18.05: 902 מול 901; 19.05: 809 מול
+834) — בדיקת תקינות עצמאית ומעודדת שנשארה תקפה גם לאחר התיקון, שכן שני
+הצינורות (A ו-B) מחושבים בנפרד לחלוטין זה מזה.
+</div>
+
+<h3>איך הנתונים נראים אחרי השלב (דוגמת שורות)</h3>
+<div class="sample-label"><code>DATA/travelers_sensor_A.parquet</code> — 7,838 שורות, ה-5 עם הכי הרבה מכשירים:</div>
+<div class="sample-table-wrap">
+<table class="sample">
+<tr><th>Traveler_ID</th><th>sensor</th><th>n_devices</th><th>MACs (first 2)</th><th>start_time</th><th>end_time</th><th>total_duration_s</th></tr>
+<tr><td>A-189-47</td><td>A</td><td>17</td><td>48:a9:1c:68:44:f0, 53:3f:78:3b:81:4e...</td><td>2026-05-19 10:31:50</td><td>2026-05-19 10:42:23</td><td>3441.0</td></tr>
+<tr><td>A-320-121</td><td>A</td><td>16</td><td>04:19:f8:08:f9:69, 0e:79:9e:5f:50:3d...</td><td>2026-05-25 11:03:56</td><td>2026-05-25 11:28:17</td><td>5679.0</td></tr>
+<tr><td>A-161-14</td><td>A</td><td>15</td><td>41:92:28:3a:cd:f3, 42:af:e0:ed:07:71...</td><td>2026-05-18 12:20:23</td><td>2026-05-18 12:23:53</td><td>1325.0</td></tr>
+<tr><td>A-196-13</td><td>A</td><td>15</td><td>02:98:1f:6a:c3:6d, 11:fd:e8:db:5d:ca...</td><td>2026-05-19 12:18:16</td><td>2026-05-19 12:24:54</td><td>3013.0</td></tr>
+<tr><td>A-376-71</td><td>A</td><td>14</td><td>28:8d:e9:3e:bb:3a, 3f:0b:5e:95:d6:c9...</td><td>2026-05-28 10:26:00</td><td>2026-05-28 10:29:55</td><td>1086.0</td></tr>
+</table>
+</div>
+
+<h3>תוצרים</h3>
+<table>
+<tr><th>קובץ</th><th>תיאור</th></tr>
+<tr><td><code>DATA/sessions_sensor_A/B_with_traveler .csv/.parquet</code></td><td>טבלת ביקורים + עמודת Traveler_ID</td></tr>
+<tr><td><code>DATA/travelers_sensor_A/B .csv/.parquet</code></td><td>טבלת סיכום ברמת המטייל (מספר מכשירים, טווח זמן, וכו׳)</td></tr>
+<tr><td><code>DATA/travelers_per_day .csv/.parquet</code></td><td>מספר מטיילים ליום, לכל חיישן</td></tr>
+<tr><td><code>notebooks/03_stage_c_entity_resolution.ipynb</code></td><td>המחברת המלאה, כולל תיעוד הבאג והתיקון וניתוח יומי</td></tr>
+</table>
+</div>
+
+<h2>מסמכי תכנון (Design Docs)</h2>
+<p>לכל שלב נכתב מסמך תכנון מפורט לפני היישום, כולל הנימוקים לכל החלטה. כל
+שלושת המסמכים עודכנו עם סעיף "Update" המתעד את השחזור מול נתוני חיישן A
+המלאים:</p>
+<table>
+<tr><th>שלב</th><th>מסמך</th></tr>
+<tr><td>א׳</td><td><code>docs/specs/2026-07-29-stage-a-time-reconstruction-design.md</code></td></tr>
+<tr><td>ב׳</td><td><code>docs/specs/2026-07-29-stage-b-sessionization-design.md</code></td></tr>
+<tr><td>ג׳</td><td><code>docs/specs/2026-07-29-stage-c-entity-resolution-design.md</code></td></tr>
+</table>
+
+<h2>מצב נוכחי והצעד הבא</h2>
+<table>
+<tr><th>שלב</th><th>תיאור</th><th>סטטוס</th></tr>
+<tr><td>א׳</td><td>הכנת נתוני חיישן A (ניקוי כפילויות)</td><td class="status-done">הושלם (שוחזר)</td></tr>
+<tr><td>ב׳</td><td>חלוקה לביקורים והנדסת מאפיינים</td><td class="status-done">הושלם (שוחזר)</td></tr>
+<tr><td>ג׳</td><td>איחוד זהויות (Traveler_ID)</td><td class="status-done">הושלם (שוחזר)</td></tr>
+<tr><td>ד׳</td><td>זיהוי כיוון תנועה (ΔRSSI בין החיישנים)</td><td class="status-pending">טרם תוכנן</td></tr>
+</table>
+<p>
+השלב הבא, שלב ד׳, ישתמש בהפרש העוצמה בין שני החיישנים (<code>ΔRSSI = RSSI_B - RSSI_A</code>)
+כדי לקבוע כיוון הליכה, ובנוסף יידרש לבצע התאמה בין מטיילים שזוהו בחיישן A לבין
+אלו שזוהו בחיישן B (קישור בין-חיישני) — משימה שלא טופלה בשלב ג׳ במכוון. יש לשים
+לב שהקטע החדש של חיישן A (26.02–08.04.2026) לא יוכל להיות מותאם לחיישן B כלל,
+מאחר שאין לו נתוני חיישן B מקבילים.
+</p>
+
+<div class="footer-note">
+דוח זה הופק אוטומטית כסיכום שיחת התכנון והפיתוח. כל הקבצים, המחברות ומסמכי
+התכנון המוזכרים נמצאים בתיקיית הפרויקט <code>bluetooth_projet</code>.
+</div>
+
+</body>
+</html>

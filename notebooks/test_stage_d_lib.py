@@ -319,12 +319,9 @@ GRID = [
 
 def _one_pair_date(gap_s, manual_A, manual_B):
     # Trends are neutral (0.0) on purpose: rssi_shape_score(0.0, 0.0) == 0,
-    # so match_score reduces to transit_time_score alone. This makes the
-    # grid's two candidate `transit_center_s` values genuinely
-    # distinguishable by timing fit -- with a nonzero trend, both 25s and
-    # 200s centers can score above min_match_score (RSSI similarity alone
-    # clears the bar), and grid_search would "pick" 25.0 only by list-order
-    # tie-breaking rather than real discrimination.
+    # so match_score reduces to transit_time_score alone and the grid's two
+    # candidate `transit_center_s` values are genuinely distinguishable by
+    # timing fit rather than by list-order tie-breaking.
     a_first = _anchor("2026-01-01 10:00:00", -90, 0.0)
     a_last = _anchor("2026-01-01 10:00:00", -70, 0.0)
     b_time = pd.Timestamp("2026-01-01 10:00:00") + pd.Timedelta(seconds=gap_s)

@@ -2,3 +2,4 @@
 .claude/worktrees/
 __pycache__/
 *.pyc
+notebooks/nbconvert.log

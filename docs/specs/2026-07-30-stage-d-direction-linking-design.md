@@ -196,3 +196,179 @@ Extending direction/linking to dates with only one sensor's data (7 of 30
 collection days) is impossible by construction — there is nothing to
 link to. The single-sensor block-gap/disappear-reappear issue noted above
 is deferred to a possible Stage B/C revision, not part of this stage.
+
+---
+
+## Post-implementation calibration results
+
+*Added after implementing the above, reviewing it, fixing the review's
+findings, and re-running the calibration. These are the real numbers.*
+
+### Headline
+
+**Direction detection does not work well enough to trust.** The Calibration
+section above anticipated this outcome ("If held-out error is large or
+unstable across folds, that is itself a reportable finding … it would mean
+the feature set isn't sufficient"). That is where we landed. The matched-pair
+*volume* is in the right ballpark; the `direction` label is only weakly
+correlated with ground truth and is badly attenuated toward 50/50 on exactly
+the dates where it would matter most.
+
+An initial implementation was worse still, for a bug rather than a data
+reason: `rssi_shape_score` was implemented as an unbounded **sum** of the two
+anchors' rectified `rssi_trend` magnitudes rather than a bounded similarity.
+With real `rssi_trend` reaching ±16 against a timing term capped at 1.0, and
+a calibrated `rssi_weight` of 5.0, RSSI steepness alone decided every match
+and timing was irrelevant; 18.2% of the shipped rows had a *negative*
+`transit_gap_s` (median ~88 minutes backwards, worst case 11.2 hours). The
+numbers below are from the corrected implementation: a bounded [0,1]
+agreement score, a hard 300s maximum-transit gate, below-threshold edges
+forbidden before rather than after the assignment is solved, and the manual
+log's label orientation fitted inside each CV fold instead of once over all
+8 dates.
+
+### Calibrated parameters
+
+Grid: 1512 points over `transit_center_s` ∈ {10…50}, `transit_spread_s` ∈
+{8…60}, `rssi_weight` ∈ {0.0…2.0}, `min_match_score` ∈ {0.05…1.1};
+`max_transit_s` fixed at 300s as a physical gate rather than a fitted value.
+
+```
+final_params = {'transit_center_s': 10.0, 'transit_spread_s': 60.0,
+                'rssi_weight': 0.0, 'min_match_score': 0.05,
+                'max_transit_s': 300.0}
+label orientation: flip=True   (in-sample loss 12412 vs 23146 for flip=False;
+                                chosen identically in all 8 CV folds)
+in-sample total loss: 12412    mean held-out loss: 2205.5
+```
+
+**`rssi_weight` fitted to exactly 0.0.** The RSSI-shape feature — the whole
+of §2's "signal fading at A while strengthening at B" idea — earns zero
+weight when it is put on a fair, bounded footing against timing and allowed
+to compete. The calibration's verdict is that it adds nothing.
+
+All four fitted values sit on a grid edge, but that is **not** a truncated
+grid: probing explicitly out-of-grid settings (centre 5s/spread 150s, centre
+1s/spread 1000s, and the flat limit spread 1e6 with threshold 1e-9) gives
+*worse* in-sample loss (13412, 13466, 13694) and predictions that converge to
+a fixed point. The corner is a **saturation plateau** — beyond it the score
+is effectively constant across the whole `(0, 300]s` gate and the matcher can
+only "pair everyone it can", which it already does.
+
+### Why the fit ran to that corner
+
+Two of the eight GT dates have a manual total larger than the maximum number
+of pairs a bipartite matching could possibly produce:
+
+| date | n_A travelers | n_B travelers | max possible matches | manual total |
+|---|---|---|---|---|
+| 2026-05-19 | 124 | 140 | 124 | **138** |
+| 2026-05-31 | 33 | 25 | 25 | **56** |
+
+On those dates *no* parameter setting can reach the target, so their squared
+error is irreducible and large, and it dominates the summed loss. The
+optimizer's only lever is to match as many people as it can — which is
+exactly the corner it chose. Stage C simply did not resolve enough distinct
+travelers on those days for the manual counts to be reachable; that is a
+Stage A–C recall issue surfacing here, not a Stage D matching issue.
+
+There is also a flaw in the loss defined in §5 above. Writing `a` and `b` for
+the two directional errors, the `total` error is `a + b`, so
+`a² + b² + (a+b)² = 2a² + 2b² + 2ab`. A purely *directional* mistake
+(`a = -e`, `b = +e`, total correct) costs `2e²`, while a purely *volumetric*
+one (`a = b = e`) costs `6e²`. **The loss weights total-count error three
+times more heavily than direction error**, so the calibration was always
+going to buy volume at direction's expense. The `total` term should be
+dropped, or the directional terms up-weighted, in any next iteration.
+
+### Leave-one-date-out results (held-out, params + orientation fitted on the other 7)
+
+| date | pred A→B | pred B→A | pred total | manual A→B | manual B→A | manual total | held-out loss |
+|---|---|---|---|---|---|---|---|
+| 2026-04-11 | 30 | 7 | 37 | 27 | 1 | 28 | 126 |
+| 2026-05-02 | 36 | 39 | 75 | 20 | 36 | 56 | 626 |
+| 2026-05-09 | 148 | 110 | 258 | 181 | 56 | 237 | 4446 |
+| 2026-05-16 | 25 | 17 | 42 | 22 | 2 | 24 | 558 |
+| 2026-05-19 | 61 | 48 | 109 | 136 | 2 | 138 | 8582 |
+| 2026-05-23 | 18 | 29 | 47 | 30 | 13 | 43 | 416 |
+| 2026-05-27 | 11 | 10 | 21 | 17 | 0 | 17 | 152 |
+| 2026-05-31 | 15 | 8 | 23 | 55 | 1 | 56 | 2738 |
+
+Mean held-out loss **2205.5** (previous, pre-fix run: 2781.2).
+
+### Direction skew — the check that actually matters
+
+Predicted vs. manual A→B *share* on each held-out date:
+
+| date | predicted A→B share | manual A→B share | error |
+|---|---|---|---|
+| 2026-04-11 | 0.811 | 0.964 | −0.153 |
+| 2026-05-02 | 0.480 | 0.357 | +0.123 |
+| 2026-05-09 | 0.574 | 0.764 | −0.190 |
+| 2026-05-16 | 0.595 | 0.917 | −0.322 |
+| 2026-05-19 | 0.560 | 0.986 | −0.426 |
+| 2026-05-23 | 0.383 | 0.698 | −0.315 |
+| 2026-05-27 | 0.524 | 1.000 | −0.476 |
+| 2026-05-31 | 0.652 | 0.982 | −0.330 |
+
+- Mean |share error| **0.292**
+- Always-predict-50/50 baseline **0.369**
+- corr(predicted share, manual share) across the 8 dates **0.533**
+  (n = 8, so not significant — p ≈ 0.17)
+
+Read honestly: the fixed implementation is **better than a coin flip but not
+by much, and not reliably**. It beats the 50/50 baseline by 0.077 in mean
+absolute share error, and the rank ordering is loosely right (the one date
+whose true traffic runs the other way, 2026-05-02, is also the date with the
+lowest predicted A→B share). But every prediction is compressed into roughly
+[0.38, 0.81] while the truth spans [0.36, 1.00], seven of the eight errors
+point the same way (toward 50/50), and on 2026-05-19 — 98.6% one-way in the
+manual log — the model predicts 56%. On 2026-05-27 (100% one-way) it predicts
+52%.
+
+This is not a tuning problem. Holding the *shape* of the matcher fixed and
+sweeping to much tighter transit windows does not recover the skew: at
+`spread=8s, min_match_score=0.5` the mean share error is 0.284; at
+`spread=12s, min_match_score=0.8` it is 0.271; at `spread=8s,
+min_match_score=1.1` it is 0.392 (worse, because too few pairs survive). The
+attenuation is essentially flat across every operating point.
+
+The mechanism is plain enough. For a *correct* pair the direction is
+unambiguous — one direction's gap is positive and the other's is negative by
+construction. The problem is that most pairs are not correct. On 2026-05-09
+there are 265 Sensor-A and 268 Sensor-B travelers inside a 58-minute window,
+i.e. ~4.5 arrivals per minute per sensor, so within any 300s gate there are
+~20 equally plausible partners on each side. `(anchor timestamp, rssi_trend)`
+does not distinguish between them, the assignment pairs people essentially by
+temporal proximity, and whether a randomly-paired A traveler's last sighting
+happens to precede or follow a randomly-paired B traveler's first sighting is
+close to a coin toss. A weak true signal is diluted by a large majority of
+arbitrary pairs.
+
+### What this means for consumers of the output
+
+- `DATA/travelers_matched_direction.csv` / `.parquet` now include unmatched
+  single-sensor travelers with `direction = NaN` (§6), and every matched
+  row's `transit_gap_s` is guaranteed to lie in (0, 300]s — the previous
+  run's 18.2% of negative, multi-hour gaps are gone.
+- The **`direction` column should not be used for per-person direction
+  claims, and only cautiously for aggregate skew.** It carries a weak,
+  attenuated signal that systematically understates one-way traffic.
+- `match_score` is a plausibility score on the scale
+  `[min_match_score, 1 + rssi_weight]`, not a probability. With the
+  calibrated `rssi_weight = 0.0` it is exactly `transit_time_score`, i.e. a
+  Gaussian in the transit gap.
+
+### Suggested next steps, in priority order
+
+1. **Fix the loss** (drop the redundant `total` term, or up-weight the
+   directional terms) so the calibration is allowed to trade volume for
+   direction. Cheapest change with the clearest rationale.
+2. **Address the two unreachable dates.** The manual totals exceed Stage C's
+   available traveler counts, so the fit is anchored to irreducible error.
+   This points back at Stage A–C recall (and at the deferred single-sensor
+   block-gap issue in "Out of scope" above), not at Stage D.
+3. **Only then** consider the richer pairwise classifier mentioned in §5 —
+   the escalation was explicitly conditioned on seeing this result first, and
+   more features on top of a mis-specified loss and an unreachable target
+   would be premature.

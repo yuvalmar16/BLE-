@@ -107,3 +107,32 @@ def match_travelers(a_anchors: list, b_anchors: list, params: dict) -> list:
             "match_score": float(score[i, j]),
         })
     return matches
+
+
+def predicted_counts(matches: list) -> dict:
+    """Aggregate matches into directional counts, same shape as the manual
+    ground truth (via manual_to_internal)."""
+    a_to_b = sum(1 for m in matches if m["direction"] == "A_to_B")
+    b_to_a = sum(1 for m in matches if m["direction"] == "B_to_A")
+    return {"A_to_B": a_to_b, "B_to_A": b_to_a, "total": a_to_b + b_to_a}
+
+
+def calibration_loss(predicted: dict, manual: dict) -> float:
+    """Squared error between predicted and manual {'A_to_B','B_to_A','total'}
+    counts for one date."""
+    return (
+        (predicted["A_to_B"] - manual["A_to_B"]) ** 2
+        + (predicted["B_to_A"] - manual["B_to_A"]) ** 2
+        + (predicted["total"] - manual["total"]) ** 2
+    )
+
+
+def manual_to_internal(manual_A: int, manual_B: int, flip: bool) -> dict:
+    """Map the manual CSV's raw direction counts onto our internal
+    A_to_B/B_to_A vocabulary. The human observer's A/B convention isn't
+    documented anywhere, so which physical direction manual 'A' means is
+    unknown a priori; `flip` lets the calibration step try both
+    orientations and keep whichever fits the ground truth better."""
+    if flip:
+        return {"A_to_B": manual_B, "B_to_A": manual_A, "total": manual_A + manual_B}
+    return {"A_to_B": manual_A, "B_to_A": manual_B, "total": manual_A + manual_B}

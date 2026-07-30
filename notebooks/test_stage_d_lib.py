@@ -114,3 +114,34 @@ def test_match_travelers_empty_inputs():
     assert match_travelers([], [], PARAMS) == []
     non_empty_a = [{"traveler_id": "A1", "first": _anchor("2026-05-02 12:00:00", -90, 0.1), "last": _anchor("2026-05-02 12:00:40", -70, -0.3)}]
     assert match_travelers(non_empty_a, [], PARAMS) == []
+
+
+from stage_d_lib import predicted_counts, calibration_loss, manual_to_internal
+
+
+def test_predicted_counts_tallies_directions():
+    matches = [{"direction": "A_to_B"}, {"direction": "A_to_B"}, {"direction": "B_to_A"}]
+    assert predicted_counts(matches) == {"A_to_B": 2, "B_to_A": 1, "total": 3}
+
+
+def test_predicted_counts_empty():
+    assert predicted_counts([]) == {"A_to_B": 0, "B_to_A": 0, "total": 0}
+
+
+def test_calibration_loss_zero_when_exact_match():
+    pred = {"A_to_B": 5, "B_to_A": 3, "total": 8}
+    assert calibration_loss(pred, pred) == 0
+
+
+def test_calibration_loss_positive_on_mismatch():
+    pred = {"A_to_B": 5, "B_to_A": 3, "total": 8}
+    manual = {"A_to_B": 4, "B_to_A": 3, "total": 7}
+    assert calibration_loss(pred, manual) == 1 + 0 + 1
+
+
+def test_manual_to_internal_no_flip():
+    assert manual_to_internal(10, 4, flip=False) == {"A_to_B": 10, "B_to_A": 4, "total": 14}
+
+
+def test_manual_to_internal_flip():
+    assert manual_to_internal(10, 4, flip=True) == {"A_to_B": 4, "B_to_A": 10, "total": 14}

@@ -72,3 +72,38 @@ def best_direction_for_pair(a_first: dict, a_last: dict, b_first: dict, b_last: 
     if score_ab >= score_ba:
         return "A_to_B", gap_ab, score_ab
     return "B_to_A", gap_ba, score_ba
+
+
+def match_travelers(a_anchors: list, b_anchors: list, params: dict) -> list:
+    """Optimal bipartite matching between Sensor-A and Sensor-B travelers
+    in the same window. Returns accepted matches only; pairs scoring below
+    `params["min_match_score"]` are left unmatched."""
+    n_a, n_b = len(a_anchors), len(b_anchors)
+    if n_a == 0 or n_b == 0:
+        return []
+
+    score = np.zeros((n_a, n_b))
+    direction = [["" for _ in range(n_b)] for _ in range(n_a)]
+    gap = np.zeros((n_a, n_b))
+    for i, a in enumerate(a_anchors):
+        for j, b in enumerate(b_anchors):
+            d, g, s = best_direction_for_pair(a["first"], a["last"], b["first"], b["last"], params)
+            score[i, j] = s
+            direction[i][j] = d
+            gap[i, j] = g
+
+    row_idx, col_idx = linear_sum_assignment(-score)
+
+    min_score = params["min_match_score"]
+    matches = []
+    for i, j in zip(row_idx, col_idx):
+        if score[i, j] < min_score:
+            continue
+        matches.append({
+            "traveler_id_a": a_anchors[i]["traveler_id"],
+            "traveler_id_b": b_anchors[j]["traveler_id"],
+            "direction": direction[i][j],
+            "transit_gap_s": float(gap[i, j]),
+            "match_score": float(score[i, j]),
+        })
+    return matches

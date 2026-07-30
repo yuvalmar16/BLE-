@@ -3,6 +3,7 @@ import pandas as pd
 from stage_d_lib import (
     last_session_anchor, first_session_anchor,
     rssi_shape_score, transit_time_score, direction_candidate_score, best_direction_for_pair,
+    match_travelers,
 )
 
 
@@ -79,3 +80,37 @@ def test_best_direction_for_pair_picks_a_to_b_when_plausible():
     assert direction == "A_to_B"
     assert gap_s == pytest.approx(25.0)
     assert score > 0
+
+
+PARAMS = {"transit_center_s": 25.0, "transit_spread_s": 15.0, "rssi_weight": 1.0, "min_match_score": 0.3}
+
+
+def _anchor(t, rssi, trend):
+    return {"time": pd.Timestamp(t), "mean_rssi": rssi, "rssi_trend": trend}
+
+
+def test_match_travelers_picks_correct_optimal_pairing():
+    a_anchors = [
+        {"traveler_id": "A1", "first": _anchor("2026-05-02 12:00:00", -90, 0.1), "last": _anchor("2026-05-02 12:00:40", -70, -0.3)},
+        {"traveler_id": "A2", "first": _anchor("2026-05-02 12:10:00", -90, 0.1), "last": _anchor("2026-05-02 12:10:40", -70, -0.3)},
+    ]
+    b_anchors = [
+        {"traveler_id": "B1", "first": _anchor("2026-05-02 12:01:05", -85, 0.3), "last": _anchor("2026-05-02 12:01:40", -65, 0.1)},
+        {"traveler_id": "B2", "first": _anchor("2026-05-02 12:10:25", -85, 0.3), "last": _anchor("2026-05-02 12:11:00", -65, 0.1)},
+    ]
+    matches = match_travelers(a_anchors, b_anchors, PARAMS)
+    pairs = {(m["traveler_id_a"], m["traveler_id_b"]): m["direction"] for m in matches}
+    assert pairs == {("A1", "B1"): "A_to_B", ("A2", "B2"): "A_to_B"}
+
+
+def test_match_travelers_rejects_below_threshold():
+    a_anchors = [{"traveler_id": "A1", "first": _anchor("2026-05-02 12:00:00", -90, 0.1), "last": _anchor("2026-05-02 12:00:40", -70, 0.1)}]
+    b_anchors = [{"traveler_id": "B1", "first": _anchor("2026-05-02 13:00:00", -85, -0.1), "last": _anchor("2026-05-02 13:00:40", -65, 0.1)}]
+    matches = match_travelers(a_anchors, b_anchors, PARAMS)
+    assert matches == []
+
+
+def test_match_travelers_empty_inputs():
+    assert match_travelers([], [], PARAMS) == []
+    non_empty_a = [{"traveler_id": "A1", "first": _anchor("2026-05-02 12:00:00", -90, 0.1), "last": _anchor("2026-05-02 12:00:40", -70, -0.3)}]
+    assert match_travelers(non_empty_a, [], PARAMS) == []

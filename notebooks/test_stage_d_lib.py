@@ -1,5 +1,9 @@
+import pytest
 import pandas as pd
-from stage_d_lib import last_session_anchor, first_session_anchor
+from stage_d_lib import (
+    last_session_anchor, first_session_anchor,
+    rssi_shape_score, transit_time_score, direction_candidate_score, best_direction_for_pair,
+)
 
 
 def _sessions(rows):
@@ -36,3 +40,42 @@ def test_single_session_traveler_anchors_use_its_own_bounds():
     last = last_session_anchor(df)
     assert first["time"] == pd.Timestamp("2026-05-02 12:00:00")
     assert last["time"] == pd.Timestamp("2026-05-02 12:00:05")
+
+
+def test_rssi_shape_score_rewards_fade_out_fade_in():
+    assert rssi_shape_score(-0.3, 0.3) == pytest.approx(0.6)
+
+
+def test_rssi_shape_score_nan_treated_as_neutral():
+    assert rssi_shape_score(float("nan"), 0.3) == pytest.approx(0.3)
+    assert rssi_shape_score(-0.3, float("nan")) == pytest.approx(0.3)
+
+
+def test_rssi_shape_score_never_negative():
+    assert rssi_shape_score(0.5, -0.5) == 0.0
+
+
+def test_transit_time_score_peaks_at_center():
+    assert transit_time_score(25.0, center=25.0, spread=15.0) == pytest.approx(1.0)
+
+
+def test_transit_time_score_decays_away_from_center():
+    near = transit_time_score(25.0, center=25.0, spread=15.0)
+    far = transit_time_score(200.0, center=25.0, spread=15.0)
+    assert far < near
+
+
+def test_transit_time_score_zero_for_negative_gap():
+    assert transit_time_score(-5.0, center=25.0, spread=15.0) == 0.0
+
+
+def test_best_direction_for_pair_picks_a_to_b_when_plausible():
+    a_first = {"time": pd.Timestamp("2026-05-02 12:00:00"), "mean_rssi": -90.0, "rssi_trend": 0.1}
+    a_last = {"time": pd.Timestamp("2026-05-02 12:00:40"), "mean_rssi": -70.0, "rssi_trend": -0.3}
+    b_first = {"time": pd.Timestamp("2026-05-02 12:01:05"), "mean_rssi": -85.0, "rssi_trend": 0.3}
+    b_last = {"time": pd.Timestamp("2026-05-02 12:01:40"), "mean_rssi": -65.0, "rssi_trend": 0.1}
+    params = {"transit_center_s": 25.0, "transit_spread_s": 15.0, "rssi_weight": 1.0}
+    direction, gap_s, score = best_direction_for_pair(a_first, a_last, b_first, b_last, params)
+    assert direction == "A_to_B"
+    assert gap_s == pytest.approx(25.0)
+    assert score > 0

@@ -136,3 +136,39 @@ def manual_to_internal(manual_A: int, manual_B: int, flip: bool) -> dict:
     if flip:
         return {"A_to_B": manual_B, "B_to_A": manual_A, "total": manual_A + manual_B}
     return {"A_to_B": manual_A, "B_to_A": manual_B, "total": manual_A + manual_B}
+
+
+def grid_search(dates_subset: dict, param_grid: list, flip: bool):
+    """Returns (best_params, best_total_loss): the params from
+    `param_grid` minimizing summed calibration_loss across every date in
+    `dates_subset`, under the given label orientation."""
+    best_params, best_loss = None, float("inf")
+    for params in param_grid:
+        total = 0.0
+        for d in dates_subset.values():
+            matches = match_travelers(d["a_anchors"], d["b_anchors"], params)
+            pred = predicted_counts(matches)
+            manual = manual_to_internal(d["manual_A"], d["manual_B"], flip)
+            total += calibration_loss(pred, manual)
+        if total < best_loss:
+            best_loss, best_params = total, params
+    return best_params, best_loss
+
+
+def leave_one_date_out(dates_data: dict, param_grid: list, flip: bool) -> list:
+    """Leave-one-date-out CV: for each held-out date, fit params via
+    grid_search on the rest, evaluate the held-out date's own loss under
+    those fitted params. One report row per date."""
+    rows = []
+    for held_out in dates_data:
+        train = {d: v for d, v in dates_data.items() if d != held_out}
+        params, _ = grid_search(train, param_grid, flip)
+        d = dates_data[held_out]
+        matches = match_travelers(d["a_anchors"], d["b_anchors"], params)
+        pred = predicted_counts(matches)
+        manual = manual_to_internal(d["manual_A"], d["manual_B"], flip)
+        rows.append({
+            "date": held_out, "params": params, "predicted": pred,
+            "manual": manual, "held_out_loss": calibration_loss(pred, manual),
+        })
+    return rows

@@ -145,3 +145,48 @@ def test_manual_to_internal_no_flip():
 
 def test_manual_to_internal_flip():
     assert manual_to_internal(10, 4, flip=True) == {"A_to_B": 4, "B_to_A": 10, "total": 14}
+
+
+from stage_d_lib import grid_search, leave_one_date_out
+
+GRID = [
+    {"transit_center_s": 25.0, "transit_spread_s": 15.0, "rssi_weight": 1.0, "min_match_score": 0.3},
+    {"transit_center_s": 200.0, "transit_spread_s": 15.0, "rssi_weight": 1.0, "min_match_score": 0.3},
+]
+
+
+def _one_pair_date(gap_s, manual_A, manual_B):
+    # Trends are neutral (0.0) on purpose: rssi_shape_score(0.0, 0.0) == 0,
+    # so match_score reduces to transit_time_score alone. This makes the
+    # grid's two candidate `transit_center_s` values genuinely
+    # distinguishable by timing fit -- with a nonzero trend, both 25s and
+    # 200s centers can score above min_match_score (RSSI similarity alone
+    # clears the bar), and grid_search would "pick" 25.0 only by list-order
+    # tie-breaking rather than real discrimination.
+    a_first = _anchor("2026-01-01 10:00:00", -90, 0.0)
+    a_last = _anchor("2026-01-01 10:00:00", -70, 0.0)
+    b_time = pd.Timestamp("2026-01-01 10:00:00") + pd.Timedelta(seconds=gap_s)
+    b_anchor = _anchor(b_time, -85, 0.0)
+    return {
+        "a_anchors": [{"traveler_id": "A1", "first": a_first, "last": a_last}],
+        "b_anchors": [{"traveler_id": "B1", "first": b_anchor, "last": b_anchor}],
+        "manual_A": manual_A, "manual_B": manual_B,
+    }
+
+
+def test_grid_search_picks_param_matching_true_transit_time():
+    dates = {"2026-01-01": _one_pair_date(25.0, manual_A=1, manual_B=0)}
+    best_params, best_loss = grid_search(dates, GRID, flip=False)
+    assert best_params["transit_center_s"] == 25.0
+    assert best_loss == 0.0
+
+
+def test_leave_one_date_out_reports_one_row_per_date():
+    dates = {
+        "2026-01-01": _one_pair_date(25.0, manual_A=1, manual_B=0),
+        "2026-01-02": _one_pair_date(25.0, manual_A=1, manual_B=0),
+        "2026-01-03": _one_pair_date(25.0, manual_A=1, manual_B=0),
+    }
+    rows = leave_one_date_out(dates, GRID, flip=False)
+    assert {r["date"] for r in rows} == set(dates.keys())
+    assert all(r["held_out_loss"] == 0.0 for r in rows)

@@ -1,0 +1,15 @@
+# Core data pipeline (Stages A-D)
+pandas>=2.3
+numpy>=2.0
+scipy>=1.14
+matplotlib>=3.9
+openpyxl>=3.1          # required by pandas.read_excel for the .xlsx sensor exports
+
+# Notebook build/execution
+nbformat>=5.10          # notebooks/_build_stage_d_notebook.py assembles the Stage D notebook
+nbconvert>=7.16          # `python -m nbconvert --execute --inplace` runs each stage notebook
+ipykernel>=6.29          # kernel nbconvert executes the notebooks against
+
+# Dev/test (historical: Stage D's matching logic was unit-tested before being
+# folded into the notebook; kept for anyone adding new pipeline code with tests)
+pytest>=8.0

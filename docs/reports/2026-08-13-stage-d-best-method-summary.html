@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Stage D: Current Best Method (2026-08-13)</title>
+<style>
+  @page { size: A4; margin: 22mm 18mm; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+    color: #1c2530;
+    background: #ffffff;
+    line-height: 1.55;
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+    font-size: 15px;
+  }
+  h1 { font-size: 26px; margin: 0 0 4px; color: #0f1720; }
+  .subtitle { color: #5b6b7c; font-size: 15px; margin-bottom: 28px; }
+  h2 {
+    font-size: 18px; margin: 40px 0 12px; padding-bottom: 6px;
+    border-bottom: 2px solid #e2e8ee; color: #0f1720;
+  }
+  h3 { font-size: 15px; margin: 22px 0 8px; color: #1c2530; }
+  p { margin: 10px 0; }
+  .lede {
+    background: #f4f8fb; border-left: 4px solid #2c6e8f; border-radius: 4px;
+    padding: 14px 18px; margin: 18px 0; font-size: 15px;
+  }
+  .metric-row {
+    display: flex; gap: 12px; margin: 18px 0; flex-wrap: wrap;
+  }
+  .metric-card {
+    flex: 1 1 150px; background: #f7f9fb; border: 1px solid #e2e8ee;
+    border-radius: 8px; padding: 14px 16px; text-align: center;
+  }
+  .metric-card .label { font-size: 11.5px; color: #5b6b7c; text-transform: uppercase; letter-spacing: 0.04em; }
+  .metric-card .value { font-size: 22px; font-weight: 600; color: #0f1720; margin-top: 4px; }
+  .metric-card .delta { font-size: 12px; color: #2c8a4d; margin-top: 2px; }
+  table {
+    border-collapse: collapse; width: 100%; margin: 14px 0 20px; font-size: 13.5px;
+  }
+  th, td { padding: 7px 10px; text-align: right; border-bottom: 1px solid #e6ebf0; }
+  th:first-child, td:first-child { text-align: left; }
+  th {
+    background: #eef3f7; color: #35414d; font-weight: 600; font-size: 12px;
+    text-transform: uppercase; letter-spacing: 0.03em;
+  }
+  tr:nth-child(even) td { background: #fafcfd; }
+  .flag-bad { color: #a33232; font-weight: 600; }
+  .flag-good { color: #2c8a4d; font-weight: 600; }
+  code {
+    background: #eef3f7; padding: 1px 6px; border-radius: 4px; font-size: 12.5px;
+    font-family: "SF Mono", Consolas, monospace; color: #1c2530;
+  }
+  ul, ol { margin: 8px 0; padding-left: 22px; }
+  li { margin: 5px 0; }
+  .caveat {
+    background: #fdf6ec; border-left: 4px solid #c78a2e; border-radius: 4px;
+    padding: 12px 16px; margin: 14px 0; font-size: 14px;
+  }
+  .status {
+    background: #f0f4f0; border-left: 4px solid #6b8f6b; border-radius: 4px;
+    padding: 12px 16px; margin: 14px 0; font-size: 14px;
+  }
+  footer {
+    margin-top: 48px; padding-top: 16px; border-top: 1px solid #e2e8ee;
+    font-size: 12px; color: #7c8a99;
+  }
+  .small { font-size: 12.5px; color: #5b6b7c; }
+</style>
+</head>
+<body>
+
+<h1>Stage D Direction Detection — Current Best Method</h1>
+<div class="subtitle">BLE hiker-monitoring project · status as of 2026-08-13</div>
+
+<div class="lede">
+This is a focused summary of the <strong>currently validated production method</strong> for
+cross-sensor identity matching and direction detection — not the full investigative
+history. For the complete series of experiments that led here (RSSI features, order
+preservation, aggregate flow, transit-time distributions, identity-matching structure,
+same-MAC evidence, Stage C recall), see
+<code>docs/specs/2026-07-30-stage-d-direction-linking-design.md</code>.
+</div>
+
+<h2>Headline result</h2>
+
+<div class="metric-row">
+  <div class="metric-card">
+    <div class="label">Held-out loss</div>
+    <div class="value">945.0</div>
+    <div class="delta">↓ from 1137.8 pre-follow-up</div>
+  </div>
+  <div class="metric-card">
+    <div class="label">Direction share error</div>
+    <div class="value">0.213</div>
+    <div class="delta">↓ from 0.263</div>
+  </div>
+  <div class="metric-card">
+    <div class="label">Correlation</div>
+    <div class="value">0.623</div>
+    <div class="delta">↑ from 0.512</div>
+  </div>
+  <div class="metric-card">
+    <div class="label">MAE (total count)</div>
+    <div class="value">17.75</div>
+    <div class="delta">unchanged</div>
+  </div>
+</div>
+
+<p class="small">All figures are <strong>leave-one-date-out (LODO)</strong> held-out
+results across the 8 manual ground-truth dates — every prediction shown was made without
+that date's own ground truth influencing the parameters used to produce it.</p>
+
+<h2>What the method actually is</h2>
+
+<h3>1. Cross-sensor identity matching</h3>
+<p>Optimal bipartite assignment (Hungarian algorithm) between Sensor-A and Sensor-B
+travelers within each time window, on a score combining:</p>
+<ul>
+  <li><strong>Transit-time plausibility</strong> — a bounded Gaussian in the transit gap
+    between a traveler's boundary sessions (peak ≈10s, spread 60s, gated to a max 180s
+    transit / 60s coverage-overlap allowance)</li>
+  <li><strong>Boundary-order agreement</strong> (<code>order_weight=0.25</code>) — do the
+    first-seen/last-seen orderings across both sensors agree with the candidate direction</li>
+  <li><strong>Neighborhood-consistency</strong> (<code>nc_weight=2.0</code>, 1 neighbor each
+    side) — a bonus for how well a traveler's nearest temporal neighbors' own best
+    candidates agree in relative order. The strongest single addition found: improves
+    held-out loss, share error, and correlation simultaneously at <em>zero</em> matched-volume
+    cost, and is the only new scoring term in this project's history chosen identically by
+    every leave-one-date-out fold rather than overfitting one unstable date.</li>
+  <li><strong>Same-MAC bonus</strong> (<code>mac_bonus=3.0</code>, binary equality) — a bonus
+    when the two candidate travelers share a raw MAC address across sensors. Rare (~4% of
+    matches) since MAC randomization defeats it for most travelers, but the subset that
+    does share a MAC is measurably cleaner (more often mutual-best, faster and more
+    physically plausible transit times) and improves the metrics further at negligible cost.
+    Verified non-circular: Stage C's per-sensor clustering never uses raw MAC identity or
+    cross-sensor information, so this is genuinely new evidence.</li>
+  <li><strong>RSSI shape</strong> (<code>rssi_weight=0.0</code>) — tested extensively
+    (whole-session trend, local slope, peak timing, full resampled trajectory shape); none
+    of it carries usable directional signal in this dataset, so it's calibrated off.</li>
+</ul>
+
+<h3>2. Direction labeling</h3>
+<p>Simplified to the trivial rule, confirmed equivalent to the full scoring-based choice on
+<strong>100% of matched pairs</strong> (626/626) before being adopted:</p>
+<ul>
+  <li><code>last_seen_A &lt; last_seen_B</code> → <strong>A→B</strong></li>
+  <li><code>last_seen_B &lt; last_seen_A</code> → <strong>B→A</strong></li>
+  <li>exact tie → <code>first_seen</code> breaks it; if that's also tied, <code>ambiguous</code></li>
+</ul>
+<p>The complexity in the matching score earns its keep entirely in deciding <em>which pair
+wins</em>; it contributes nothing beyond this rule to the direction label of whichever
+pair does win.</p>
+
+<h2>Validated per-date results (held-out)</h2>
+
+<table>
+<thead>
+<tr><th>Date</th><th>GT window</th><th>Pred A→B</th><th>Pred B→A</th><th>Pred total</th>
+<th>Manual A→B</th><th>Manual B→A</th><th>Manual total</th><th>Pred A-share</th>
+<th>Manual A-share</th><th>Held-out loss</th></tr>
+</thead>
+<tbody>
+<tr><td>2026-04-11</td><td class="small">09:03:54–09:36:57</td><td>36</td><td>4</td><td>40</td><td>27</td><td>1</td><td>28</td><td>0.900</td><td>0.964</td><td>90</td></tr>
+<tr><td>2026-05-02</td><td class="small">12:36:26–13:15:03</td><td>39</td><td>36</td><td>75</td><td>20</td><td>36</td><td>56</td><td>0.520</td><td>0.357</td><td>361</td></tr>
+<tr><td>2026-05-09</td><td class="small">11:00:35–11:58:39</td><td>186</td><td>79</td><td>265</td><td>181</td><td>56</td><td>237</td><td>0.702</td><td>0.764</td><td>554</td></tr>
+<tr><td>2026-05-16</td><td class="small">08:20:51–09:04:17</td><td>30</td><td>13</td><td>43</td><td>22</td><td>2</td><td>24</td><td>0.698</td><td>0.917</td><td>185</td></tr>
+<tr><td>2026-05-19</td><td class="small">09:27:20–10:43:42</td><td>79</td><td>35</td><td>114</td><td>136</td><td>2</td><td>138</td><td>0.693</td><td>0.986</td><td class="flag-bad">4338</td></tr>
+<tr><td>2026-05-23</td><td class="small">09:04:50–09:57:14</td><td>20</td><td>28</td><td>48</td><td>30</td><td>13</td><td>43</td><td>0.417</td><td>0.698</td><td>325</td></tr>
+<tr><td>2026-05-27</td><td class="small">10:29:41–10:51:16</td><td>16</td><td>5</td><td>21</td><td>17</td><td>0</td><td>17</td><td>0.762</td><td>1.000</td><td>26</td></tr>
+<tr><td>2026-05-31</td><td class="small">10:09:30–10:51:04</td><td>15</td><td>10</td><td>25</td><td>55</td><td>1</td><td>56</td><td>0.600</td><td>0.982</td><td class="flag-bad">1681</td></tr>
+</tbody>
+</table>
+
+<p class="small">Six of eight dates land within 4–28 people of the true total with
+directional share trending the right way. The two flagged rows are explained below —
+they are not a matcher failure.</p>
+
+<h2>Progression: what got us here</h2>
+<table>
+<thead><tr><th>Stage</th><th>Held-out loss</th><th>Share error</th><th>Corr</th></tr></thead>
+<tbody>
+<tr><td>Timing + boundary-order signal (2026-08-01 state)</td><td>1137.8</td><td>0.263</td><td>0.512</td></tr>
+<tr><td>+ neighborhood-consistency</td><td>997.4</td><td>0.240</td><td>0.564</td></tr>
+<tr><td>+ same-MAC bonus <strong>(current)</strong></td><td><strong>945.0</strong></td><td><strong>0.213</strong></td><td><strong>0.623</strong></td></tr>
+</tbody>
+</table>
+<p>Two consecutive, independently-validated improvements, each confirmed on real held-out
+data rather than assumed. RSSI features, hard/soft order-preservation constraints,
+aggregate flow estimation, candidate pruning, mutual-best-only matching, and anchor-window
+matching were all tested separately and did <em>not</em> beat this configuration — see the
+design doc for the full negative-result record.</p>
+
+<div class="caveat">
+<strong>Known limitation — two structurally unreachable dates.</strong>
+2026-05-19 and 2026-05-31 have a Stage-C traveler count below the manual total no matter
+how Stage D scores candidates — matching cannot recover volume that was never resolved as
+distinct travelers upstream. Diagnosed in a dedicated follow-up: 2026-05-31 is a raw
+BLE-sensing ceiling (Sensor B detected only 40 raw MAC addresses against a manual count of
+56 — unfixable at any pipeline stage). 2026-05-19 is genuine Stage C over-merging
+(crowded periods produce large clusters of temporally-overlapping, similar-RSSI-trend
+sessions from different people). A candidate fix
+(<code>BLOCK_GAP_THRESHOLD_S: 60→30s</code>) is validated and recommended but
+<strong>not yet incorporated into this method</strong> — held-out loss 901.0→881.6
+if adopted, verified non-pathological across the full 30-day dataset, but it trades
+some accuracy on 2026-05-09 for improvement on 2026-05-19, so it's staged as a separate
+decision.
+</div>
+
+<div class="caveat">
+<strong>Statistical power.</strong> All comparisons in this project are over 8
+ground-truth dates. Every metric above should be read as "the best-supported estimate
+given the data," not as a guarantee — correlation in particular swings substantially
+between similar-looking configurations at this sample size.
+</div>
+
+<div class="status">
+<strong>Status: this is the current production configuration.</strong>
+Implemented in <code>notebooks/04_stage_d_direction_linking.ipynb</code>, executed
+against real project data with zero errors, and used to regenerate
+<code>DATA/travelers_matched_direction.csv</code> / <code>.parquet</code>
+(6,221 matched pairs across all 14 dual-sensor dates). The <code>direction</code> column
+should still be used for aggregate skew rather than individual per-person claims.
+</div>
+
+<footer>
+Generated from the executed Stage D notebook and the accompanying follow-up
+investigations logged in
+<code>docs/specs/2026-07-30-stage-d-direction-linking-design.md</code>.
+</footer>
+
+</body>
+</html>
